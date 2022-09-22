@@ -43,20 +43,23 @@ exception Not_Closure
 
 let rec evaluate env = function
   | Var x -> (
-    print_endline "evaluate var";
+    (* print_endline "evaluate var"; *)
       try List.assoc x env with
         Not_found -> Neutral(Nvar(x))
     )
   | App (r, d) -> (
-    print_endline "evaluate app";
+    (* print_endline "evaluate app"; *)
     let rv = evaluate env r in
       let dv = Lazy(env, d) in
         do_apply rv dv
     )
-  | Abs (n, b) -> print_endline "evaluate abs"; Closure(env, n, b)
+  | Abs (n, b) -> (
+      (* print_endline "evaluate abs"; *)
+      Closure(env, n, b)
+    )
 
 and do_apply rator rand =
-  print_endline "do_apply";
+  (* print_endline "do_apply"; *)
   match rator with
   | Closure (e, n, b) -> (evaluate ((n, rand) :: e) b)
   | Neutral n -> Neutral(Napp(n, rand))
@@ -65,14 +68,14 @@ and do_apply rator rand =
 
 let rec readback used v = match v with
   | Neutral n -> (
-      print_endline "readback neutral";
+      (* print_endline "readback neutral"; *)
       match n with
       | Nvar nv -> Var(nv)
       | Napp (nr, nd) -> App(readback used (Neutral nr),
                              readback used nd)
     )
   | Closure (e, n, b) -> (
-      print_endline "readback closure";
+      (* print_endline "readback closure"; *)
       let fx = fresh (n :: used) n in
       (* let fx = fresh used n in *)
         Abs(fx,
@@ -84,12 +87,31 @@ and normalize e = readback [] (evaluate [] e)
 
 let ap = Abs("f", Abs("x", App(Var("f"), Var("x"))))
 let varx = Var("x")
-let test = App(ap, varx)
+let test1 = App(ap, varx)
 
 let tmp = Abs("x", App(Var "x", Var "x"))
 let omega = App(tmp, tmp)
 let rator = Abs("x", Abs("y", Var("y")))
+let test2 = App (rator, omega)
 
-let () = print_endline (expr_of_string omega)
-let () = print_endline (expr_of_string (normalize (App(rator, omega))))
+let () = print_endline (expr_of_string (normalize test1))
+let () = print_endline (expr_of_string (normalize test2))
 let () = print_endline (expr_of_string (normalize id))
+
+let zero = Abs("base", Abs("step", Var "base"))
+let add1 = Abs("n", Abs("base", Abs("step", App(Var "step", App(App(Var "n", Var "base"), Var "step")))))
+let iter = Abs("n", Abs("base", Abs("step", App(App(Var "n", Var "base"), Var "step"))))
+let one = App(add1, zero)
+let two = App(add1, one)
+let three = App(add1, two)
+let add = Abs("m", Abs("n", App(App(App(iter, Var "m"), Var "n"), add1)))
+
+let () = print_endline (expr_of_string zero)
+let () = print_endline (expr_of_string add1)
+let () = print_endline (expr_of_string iter)
+let () = print_endline (expr_of_string one)
+let () = print_endline (expr_of_string (normalize one))
+let () = print_endline (expr_of_string (normalize two))
+let () = print_endline (expr_of_string (normalize three))
+let () = print_endline (expr_of_string (normalize (App((App(add, two), two)))))
+
