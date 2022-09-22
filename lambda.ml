@@ -6,6 +6,7 @@ type expr =
 type value =
 | Neutral of neutral
 | Closure of env * string * expr
+| Lazy of env * expr
 
 and env = (string * value) list
 
@@ -49,7 +50,7 @@ let rec evaluate env = function
   | App (r, d) -> (
     print_endline "evaluate app";
     let rv = evaluate env r in
-      let dv = evaluate env d in
+      let dv = Lazy(env, d) in
         do_apply rv dv
     )
   | Abs (n, b) -> print_endline "evaluate abs"; Closure(env, n, b)
@@ -59,6 +60,7 @@ and do_apply rator rand =
   match rator with
   | Closure (e, n, b) -> (evaluate ((n, rand) :: e) b)
   | Neutral n -> Neutral(Napp(n, rand))
+  | Lazy (env, expr) -> do_apply (evaluate env expr) rand
 
 
 let rec readback used v = match v with
@@ -76,6 +78,7 @@ let rec readback used v = match v with
         Abs(fx,
         readback ([fx; n] @ used) (do_apply v (Neutral (Nvar fx))))
     )
+  | Lazy (env, expr) -> readback used (evaluate env expr)
 
 and normalize e = readback [] (evaluate [] e)
 
@@ -83,4 +86,10 @@ let ap = Abs("f", Abs("x", App(Var("f"), Var("x"))))
 let varx = Var("x")
 let test = App(ap, varx)
 
-let () = print_endline (expr_of_string (normalize (App(ap, varx))))
+let tmp = Abs("x", App(Var "x", Var "x"))
+let omega = App(tmp, tmp)
+let rator = Abs("x", Abs("y", Var("y")))
+
+let () = print_endline (expr_of_string omega)
+let () = print_endline (expr_of_string (normalize (App(rator, omega))))
+let () = print_endline (expr_of_string (normalize id))
